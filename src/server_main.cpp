@@ -1,0 +1,178 @@
+#include "employee_file.h"
+#include "named_pipe.h"
+#include "server_logic.h"
+
+#include <windows.h>
+
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <limits>
+
+struct ThreadData {
+    ServerLogic* server;
+};
+
+void input_employees(std::vector<employee>& employees) {
+    int count;
+
+    std::cout << "Enter number of employees: ";
+    std::cin >> count;
+
+    employees.resize(count);
+
+    for (int i = 0; i < count; ++i) {
+        std::cout << "\nEmployee #" << i + 1 << '\n';
+
+        std::cout << "ID: ";
+        std::cin >> employees[i].num;
+
+        std::cout << "Name: ";
+        std::cin.width(10);
+        std::cin >> employees[i].name;
+
+        std::cout << "Hours: ";
+        std::cin >> employees[i].hours;
+    }
+}
+
+void start_client_processes(int count) {
+    char server_path[MAX_PATH];
+
+    GetModuleFileNameA(
+        NULL,
+        server_path,
+        MAX_PATH
+    );
+
+    std::string server_exe_path = server_path;
+    std::string folder = server_exe_path.substr(
+        0,
+        server_exe_path.find_last_of("\\/")
+    );
+
+    std::string client_path = folder + "\\Client.exe";
+
+    for (int i = 0; i < count; ++i) {
+        STARTUPINFOA startup_info{};
+        PROCESS_INFORMATION process_info{};
+
+        startup_info.cb = sizeof(startup_info);
+
+        BOOL success = CreateProcessA(
+            client_path.c_str(),
+            NULL,
+            NULL,
+            NULL,
+            FALSE,
+            CREATE_NEW_CONSOLE,
+            NULL,
+            folder.c_str(),
+            &startup_info,
+            &process_info
+        );
+
+        if (!success) {
+            std::cerr << "Failed to start Client.exe. Path: "
+                << client_path
+                << "\nError: "
+                << GetLastError()
+                << '\n';
+            continue;
+        }
+
+        CloseHandle(process_info.hThread);
+        CloseHandle(process_info.hProcess);
+    }
+}
+
+DWORD WINAPI serve_one_client(LPVOID parameter) {
+    ThreadData* data = static_cast<ThreadData*>(parameter);
+
+    try {
+        NamedPipe pipe = create_server_pipe();
+
+        wait_client_connection(pipe);
+
+        data->server->process_client(pipe.handle());
+    }
+    catch (const std::exception& error) {
+        std::cerr << "Client service error: " << error.what() << '\n';
+    }
+
+    return 0;
+}
+
+int main() {
+    try {
+        std::string filename;
+
+        std::cout << "Enter binary file name: ";
+        std::cin >> filename;
+
+        std::vector<employee> employees;
+        input_employees(employees);
+
+        create_employee_file(filename, employees);
+
+        std::cout << "\nInitial file content:\n";
+        print_employee_file(filename);
+
+        int client_count;
+
+        std::cout << "\nEnter number of client processes: ";
+        std::cin >> client_count;
+
+        ServerLogic server(filename);
+
+        std::vector<HANDLE> thread_handles(client_count);
+        std::vector<DWORD> thread_ids(client_count);
+        std::vector<ThreadData> thread_data(client_count);
+
+        for (int i = 0; i < client_count; ++i) {
+            thread_data[i].server = &server;
+
+            thread_handles[i] = CreateThread(
+                NULL,
+                0,
+                serve_one_client,
+                &thread_data[i],
+                0,
+                &thread_ids[i]
+            );
+
+            if (thread_handles[i] == NULL) {
+                std::cerr << "CreateThread failed. Error: "
+                    << GetLastError()
+                    << '\n';
+            }
+        }
+
+        start_client_processes(client_count);
+
+        for (int i = 0; i < client_count; ++i) {
+            if (thread_handles[i] != NULL) {
+                WaitForSingleObject(
+                    thread_handles[i],
+                    INFINITE
+                );
+
+                CloseHandle(thread_handles[i]);
+            }
+        }
+
+        std::cout << "\nModified file content:\n";
+        print_employee_file(filename);
+
+        std::cout << "\nPress Enter to finish server...";
+        std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+        std::cin.get();
+    }
+    catch (const std::exception& error) {
+        std::cerr << "Server error: " << error.what() << '\n';
+        return 1;
+    }
+
+    return 0;
+}
