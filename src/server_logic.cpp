@@ -196,35 +196,3 @@ void ServerLogic::handle_update_request(
         sizeof(response)
     );
 }
-
-void ServerLogic::handle_release_read_request(
-    const ClientRequest& request
-) {
-    locks_.unlock_for_read(request.employee_id);
-}
-
-void ServerLogic::handle_release_write_request(
-    const ClientRequest& request
-) {
-    locks_.unlock_for_write(request.employee_id);
-}
-
-void ServerLogic::send_error_response(
-    HANDLE pipe,
-    const char* message
-) {
-    ServerResponse response{};
-
-    response.status = ResponseStatus::Error;
-
-    std::strcpy(
-        response.message,
-        message
-    );
-
-    write_to_pipe(
-        pipe,
-        &response,
-        sizeof(response)
-    );
-}

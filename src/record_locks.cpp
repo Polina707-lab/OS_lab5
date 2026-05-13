@@ -80,7 +80,6 @@ void RecordLocks::unlock_for_read(int employee_id) {
         state.readers_count--;
     }
 
-    SetEvent(event_);
     if (!SetEvent(event_)) {
         unlock_mutex();
         throw WinApiError::from_last_error("SetEvent failed");
@@ -117,7 +116,6 @@ void RecordLocks::unlock_for_write(int employee_id) {
 
     states_[employee_id].writer_active = false;
 
-    SetEvent(event_);
     if (!SetEvent(event_)) {
         unlock_mutex();
         throw WinApiError::from_last_error("SetEvent failed");

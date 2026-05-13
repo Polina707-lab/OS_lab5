@@ -1,14 +1,16 @@
 #include "employee_file.h"
 #include "named_pipe.h"
 #include "server_logic.h"
+#include "input_utils.h"
 
 #include <windows.h>
 
-#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <limits>
+
+constexpr int MAX_CLIENT_COUNT = 10;
 
 struct ThreadData {
     ServerLogic* server;
@@ -17,23 +19,19 @@ struct ThreadData {
 void input_employees(std::vector<employee>& employees) {
     int count;
 
-    std::cout << "Enter number of employees: ";
-    std::cin >> count;
+    count = input_positive_int("Enter number of employees: ");
 
     employees.resize(count);
 
     for (int i = 0; i < count; ++i) {
         std::cout << "\nEmployee #" << i + 1 << '\n';
 
-        std::cout << "ID: ";
-        std::cin >> employees[i].num;
+        employees[i].num = input_positive_int("ID: ");
 
-        std::cout << "Name: ";
-        std::cin.width(10);
-        std::cin >> employees[i].name;
+        std::string name = input_name("Name: ");
+        std::strcpy(employees[i].name, name.c_str());
 
-        std::cout << "Hours: ";
-        std::cin >> employees[i].hours;
+        employees[i].hours = input_non_negative_double("Hours: ");
     }
 }
 
@@ -108,8 +106,7 @@ int main() {
     try {
         std::string filename;
 
-        std::cout << "Enter binary file name: ";
-        std::cin >> filename;
+        filename = input_filename("Enter binary file name: ");
 
         std::vector<employee> employees;
         input_employees(employees);
@@ -121,8 +118,13 @@ int main() {
 
         int client_count;
 
-        std::cout << "\nEnter number of client processes: ";
-        std::cin >> client_count;
+        client_count = input_int_in_range(
+            "\nEnter number of client processes (1-" +
+            std::to_string(MAX_CLIENT_COUNT) +
+            "): ",
+            1,
+            MAX_CLIENT_COUNT
+        );
 
         ServerLogic server(filename);
 
@@ -165,9 +167,7 @@ int main() {
         std::cout << "\nModified file content:\n";
         print_employee_file(filename);
 
-        std::cout << "\nPress Enter to finish server...";
-        std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-        std::cin.get();
+        wait_enter("\nPress Enter to finish server...");
     }
     catch (const std::exception& error) {
         std::cerr << "Server error: " << error.what() << '\n';

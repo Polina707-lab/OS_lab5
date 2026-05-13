@@ -1,8 +1,10 @@
 #include "client_logic.h"
+#include "input_utils.h"
 
 #include <cstring>
 #include <iostream>
 #include <limits>
+
 
 void ClientLogic::run() {
     NamedPipe pipe = connect_to_server_pipe();
@@ -13,7 +15,7 @@ void ClientLogic::run() {
         print_menu();
 
         int choice;
-        std::cin >> choice;
+        choice = input_menu_choice("Your choice: ");
 
         switch (choice) {
         case 1:
@@ -41,14 +43,12 @@ void ClientLogic::print_menu() const {
     std::cout << "1. Read employee record\n";
     std::cout << "2. Modify employee record\n";
     std::cout << "0. Exit\n";
-    std::cout << "Your choice: ";
 }
 
 void ClientLogic::read_record(HANDLE pipe) {
     int employee_id;
 
-    std::cout << "Enter employee ID: ";
-    std::cin >> employee_id;
+    employee_id = input_positive_int("Enter employee ID: ");
 
     ClientRequest request{};
     request.type = RequestType::ReadRecord;
@@ -73,9 +73,7 @@ void ClientLogic::read_record(HANDLE pipe) {
     if (response.status == ResponseStatus::Success) {
         print_employee(response.data);
 
-        std::cout << "Press Enter to finish access to this record...";
-        std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-        std::cin.get();
+        wait_enter("Press Enter to finish access to this record...");
 
         send_release_read(pipe, employee_id);
     }
@@ -84,8 +82,7 @@ void ClientLogic::read_record(HANDLE pipe) {
 void ClientLogic::modify_record(HANDLE pipe) {
     int employee_id;
 
-    std::cout << "Enter employee ID: ";
-    std::cin >> employee_id;
+    employee_id = input_positive_int("Enter employee ID: ");
 
     ClientRequest request{};
     request.type = RequestType::ModifyRecord;
@@ -116,21 +113,17 @@ void ClientLogic::modify_record(HANDLE pipe) {
 
     employee updated = response.data;
 
-    std::cout << "Enter new name: ";
-    std::cin.width(10);
-    std::cin >> updated.name;
+    std::string name = input_name("Enter new name: ");
+    std::strcpy(updated.name, name.c_str());
 
-    std::cout << "Enter new hours: ";
-    std::cin >> updated.hours;
+    updated.hours = input_non_negative_double("Enter new hours: ");
 
     ClientRequest update_request{};
     update_request.type = RequestType::UpdateRecord;
     update_request.employee_id = employee_id;
     update_request.data = updated;
 
-    std::cout << "Press Enter to send modified record...";
-    std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
-    std::cin.get();
+    wait_enter("Press Enter to finish access to this record...");
 
     write_to_pipe(
         pipe,
@@ -148,8 +141,7 @@ void ClientLogic::modify_record(HANDLE pipe) {
 
     std::cout << update_response.message << '\n';
 
-    std::cout << "Press Enter to finish access to this record...";
-    std::cin.get();
+    wait_enter("Press Enter to finish access to this record...");
 
     send_release_write(pipe, employee_id);
 }

@@ -29,18 +29,6 @@ private:
         const ClientRequest& request
     );
 
-    void handle_release_read_request(
-        const ClientRequest& request
-    );
-
-    void handle_release_write_request(
-        const ClientRequest& request
-    );
-
-    void send_error_response(
-        HANDLE pipe,
-        const char* message
-    );
 
 private:
     std::string filename_;

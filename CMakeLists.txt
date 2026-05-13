@@ -23,6 +23,7 @@ add_library(os_lab_core
     src/named_pipe.cpp
     src/server_logic.cpp
     src/client_logic.cpp
+    src/input_utils.cpp
     src/winapi_error.cpp
 )
 
