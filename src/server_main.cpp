@@ -16,6 +16,19 @@ struct ThreadData {
     ServerLogic* server;
 };
 
+bool employee_id_exists(
+    const std::vector<employee>& employees,
+    int id
+) {
+    for (const auto& emp : employees) {
+        if (emp.num == id) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void input_employees(std::vector<employee>& employees) {
     int count;
 
@@ -26,7 +39,16 @@ void input_employees(std::vector<employee>& employees) {
     for (int i = 0; i < count; ++i) {
         std::cout << "\nEmployee #" << i + 1 << '\n';
 
-        employees[i].num = input_positive_int("ID: ");
+        while (true) {
+            int id = input_positive_int("ID: ");
+
+            if (!employee_id_exists(employees, id)) {
+                employees[i].num = id;
+                break;
+            }
+
+            std::cout << "Error: employee with this ID already exists.\n";
+        }
 
         std::string name = input_name("Name: ");
         std::strcpy(employees[i].name, name.c_str());
@@ -34,6 +56,7 @@ void input_employees(std::vector<employee>& employees) {
         employees[i].hours = input_non_negative_double("Hours: ");
     }
 }
+
 
 void start_client_processes(int count) {
     char server_path[MAX_PATH];

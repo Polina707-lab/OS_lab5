@@ -16,6 +16,8 @@ NamedPipe::~NamedPipe() {
     close();
 }
 
+//move-конструктор нужен, чтобы передать владение ресурсом из одного объекта в другой.
+//мой ресурс - дескриптор именованного канала.
 NamedPipe::NamedPipe(NamedPipe&& other) noexcept
     : handle_(other.handle_) {
     other.handle_ = INVALID_HANDLE_VALUE;

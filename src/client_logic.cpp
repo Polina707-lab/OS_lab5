@@ -123,8 +123,6 @@ void ClientLogic::modify_record(HANDLE pipe) {
     update_request.employee_id = employee_id;
     update_request.data = updated;
 
-    wait_enter("Press Enter to finish access to this record...");
-
     write_to_pipe(
         pipe,
         &update_request,
